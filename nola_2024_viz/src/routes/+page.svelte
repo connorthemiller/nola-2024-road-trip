@@ -95,8 +95,20 @@
     }
 
     // ---- AUDIO PLAYER ----
-    function playTrack(track) {
-        if (!track.previewUrl) return;
+    let isLoadingPreview = false;
+
+    async function fetchPreviewUrl(deezerId) {
+        try {
+            const resp = await fetch(`https://api.deezer.com/track/${deezerId}`);
+            const data = await resp.json();
+            return data.preview || null;
+        } catch {
+            return null;
+        }
+    }
+
+    async function playTrack(track) {
+        if (!track.deezerId) return;
 
         if (audio) {
             audio.pause();
@@ -104,7 +116,15 @@
             audio.removeEventListener('ended', onEnded);
         }
 
-        audio = new Audio(track.previewUrl);
+        isLoadingPreview = true;
+        playerVisible = true;
+
+        const previewUrl = await fetchPreviewUrl(track.deezerId);
+        isLoadingPreview = false;
+
+        if (!previewUrl) return;
+
+        audio = new Audio(previewUrl);
         audio.addEventListener('timeupdate', onTimeUpdate);
         audio.addEventListener('ended', onEnded);
         audio.addEventListener('loadedmetadata', () => {
@@ -113,7 +133,6 @@
 
         audio.play();
         isPlaying = true;
-        playerVisible = true;
     }
 
     function togglePlay() {
@@ -153,7 +172,7 @@
         const idx = allTracks.indexOf(selectedTrack);
         // Find previous track with a preview
         for (let i = idx - 1; i >= 0; i--) {
-            if (allTracks[i].previewUrl) {
+            if (allTracks[i].deezerId) {
                 selectTrack(allTracks[i]);
                 return;
             }
@@ -165,7 +184,7 @@
         const idx = allTracks.indexOf(selectedTrack);
         // Find next track with a preview
         for (let i = idx + 1; i < allTracks.length; i++) {
-            if (allTracks[i].previewUrl) {
+            if (allTracks[i].deezerId) {
                 selectTrack(allTracks[i]);
                 return;
             }
@@ -178,7 +197,7 @@
         if (map && track.lat && track.lng) {
             map.panTo([track.lat, track.lng], { animate: true, duration: 0.4 });
         }
-        if (track.previewUrl) {
+        if (track.deezerId) {
             playTrack(track);
         } else {
             playerVisible = true;
@@ -212,7 +231,7 @@
                 setTimeout(() => openMarkerPopup(track), 850);
             }
         }
-        if (track.previewUrl) {
+        if (track.deezerId) {
             playTrack(track);
         } else {
             playerVisible = true;
@@ -283,7 +302,7 @@
         tracks.forEach((track, idx) => {
             if (!track.lat || !track.lng) return;
             const accent = accentColors[idx % accentColors.length];
-            const hasPreview = !!track.previewUrl;
+            const hasPreview = !!track.deezerId;
 
             const marker = L.circleMarker([track.lat, track.lng], {
                 radius: isMobile ? 7 : 6,
@@ -416,13 +435,13 @@
                         <button
                             class="track-item"
                             class:selected={selectedTrack === track}
-                            class:has-preview={!!track.previewUrl}
+                            class:has-preview={!!track.deezerId}
                             on:click={() => selectTrack(track)}
                         >
                             <div class="track-color-bar" style="background:{accentColors[(dayIdx * 7 + tIdx) % accentColors.length]}"></div>
                             <div class="track-info">
                                 <span class="track-name">
-                                    {#if track.previewUrl}<span class="track-play-icon">▶</span>{/if}
+                                    {#if track.deezerId}<span class="track-play-icon">▶</span>{/if}
                                     {track.trackName}
                                 </span>
                                 <span class="track-artist">{track.artistName}</span>
@@ -464,9 +483,9 @@
             <!-- Controls -->
             <div class="player-controls">
                 <button class="ctrl-btn" on:click={skipPrev} aria-label="Previous">◄◄</button>
-                {#if selectedTrack.previewUrl}
-                    <button class="ctrl-btn ctrl-play" on:click={togglePlay} aria-label={isPlaying ? 'Pause' : 'Play'}>
-                        {isPlaying ? '▮▮' : '▶'}
+                {#if selectedTrack.deezerId}
+                    <button class="ctrl-btn ctrl-play" on:click={togglePlay} aria-label={isPlaying ? 'Pause' : 'Play'} disabled={isLoadingPreview}>
+                        {#if isLoadingPreview}···{:else}{isPlaying ? '▮▮' : '▶'}{/if}
                     </button>
                 {:else}
                     <div class="ctrl-no-preview">NO PREVIEW</div>
@@ -475,7 +494,7 @@
             </div>
 
             <!-- Progress bar -->
-            {#if selectedTrack.previewUrl}
+            {#if selectedTrack.deezerId}
                 <div class="player-progress" on:click={seekTo} role="progressbar" tabindex="0"
                      aria-valuenow={playProgress} aria-valuemin="0" aria-valuemax={playDuration}>
                     <div class="progress-fill" style="width:{playDuration ? (playProgress / playDuration) * 100 : 0}%"></div>

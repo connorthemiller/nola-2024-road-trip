@@ -34,14 +34,14 @@ def search_deezer(track_name, artist_name):
             if (track_name.lower() in t_name or t_name in track_name.lower()) and \
                (artist_name.lower() in t_artist or t_artist in artist_name.lower()):
                 return {
-                    "previewUrl": t.get("preview"),
+                    "deezerId": t.get("id"),
                     "artworkUrl": t.get("album", {}).get("cover_big", ""),
                 }
 
         # Fall back to first result
         t = results[0]
         return {
-            "previewUrl": t.get("preview"),
+            "deezerId": t.get("id"),
             "artworkUrl": t.get("album", {}).get("cover_big", ""),
         }
 
@@ -85,9 +85,10 @@ def main():
             # Deezer allows ~50 req/s, be polite
             time.sleep(0.15)
 
-        if result and result.get("previewUrl"):
-            track["previewUrl"] = result["previewUrl"]
-            # Only use Deezer artwork if we don't already have Spotify artwork
+        if result and result.get("deezerId"):
+            track["deezerId"] = result["deezerId"]
+            # Remove stale preview URLs
+            track.pop("previewUrl", None)
             if not track.get("artworkUrl") and result.get("artworkUrl"):
                 track["artworkUrl"] = result["artworkUrl"]
             found += 1
@@ -105,7 +106,7 @@ def main():
     with open(OUTPUT_FILE, "w") as f:
         json.dump(tracks, f, indent=2)
 
-    print(f"\nDone! {found}/{len(tracks)} tracks have audio previews ({not_found} missing)")
+    print(f"\nDone! {found}/{len(tracks)} tracks have Deezer IDs ({not_found} missing)")
 
 
 if __name__ == "__main__":
