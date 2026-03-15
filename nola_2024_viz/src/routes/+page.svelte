@@ -98,13 +98,30 @@
     let isLoadingPreview = false;
 
     async function fetchPreviewUrl(deezerId) {
-        try {
-            const resp = await fetch(`https://api.deezer.com/track/${deezerId}`);
-            const data = await resp.json();
-            return data.preview || null;
-        } catch {
-            return null;
-        }
+        // Use JSONP to bypass CORS restrictions on Deezer API
+        return new Promise((resolve) => {
+            const cbName = `_deezer_cb_${deezerId}_${Date.now()}`;
+            const script = document.createElement('script');
+
+            const timeout = setTimeout(() => {
+                cleanup();
+                resolve(null);
+            }, 8000);
+
+            function cleanup() {
+                clearTimeout(timeout);
+                delete window[cbName];
+                if (script.parentNode) script.parentNode.removeChild(script);
+            }
+
+            window[cbName] = (data) => {
+                cleanup();
+                resolve(data?.preview || null);
+            };
+
+            script.src = `https://api.deezer.com/track/${deezerId}?output=jsonp&callback=${cbName}`;
+            document.head.appendChild(script);
+        });
     }
 
     async function playTrack(track) {
