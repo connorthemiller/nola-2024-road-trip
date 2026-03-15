@@ -1,0 +1,19 @@
+# Credentials
+.env
+.env.*
+
+# Personal data - never commit
+trip_photos/
+Spotify Account Data/
+my_spotify_data_*.zip
+*.zip
+
+# Cache files from data pipeline
+nola_2024_viz/src/lib/data/preview_cache.json
+nola_2024_viz/src/lib/data/spotify_cache.json
+nola_2024_viz/src/lib/data/deezer_cache.json
+
+# System
+.DS_Store
+.claude/
+nola_2024_viz/src/lib/spotify_listening_data.json
